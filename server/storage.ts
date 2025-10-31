@@ -1,37 +1,33 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import type { PetTravelResponse } from "@shared/schema";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  cacheRequirements(key: string, data: PetTravelResponse): Promise<void>;
+  getCachedRequirements(key: string): Promise<PetTravelResponse | undefined>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+  private cache: Map<string, { data: PetTravelResponse; timestamp: number }>;
+  private readonly CACHE_TTL = 24 * 60 * 60 * 1000;
 
   constructor() {
-    this.users = new Map();
+    this.cache = new Map();
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async cacheRequirements(key: string, data: PetTravelResponse): Promise<void> {
+    this.cache.set(key, { data, timestamp: Date.now() });
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
+  async getCachedRequirements(key: string): Promise<PetTravelResponse | undefined> {
+    const cached = this.cache.get(key);
+    if (!cached) return undefined;
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+    const age = Date.now() - cached.timestamp;
+    if (age > this.CACHE_TTL) {
+      this.cache.delete(key);
+      return undefined;
+    }
+
+    return cached.data;
   }
 }
 
