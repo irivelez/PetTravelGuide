@@ -7,24 +7,23 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import {
-  Syringe,
-  FileText,
-  Home,
-  Plane,
   AlertTriangle,
   CheckCircle2,
   Clock,
+  ArrowRight,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface Requirement {
-  id: string;
-  category: string;
+interface RequirementPhaseDisplay {
+  phase: "entry" | "exit";
+  country: string;
   icon: any;
   items: {
     title: string;
     description: string;
     critical?: boolean;
+    subcategory?: "health" | "documentation" | "quarantine" | "general";
   }[];
 }
 
@@ -32,7 +31,7 @@ interface RequirementsDisplayProps {
   origin: string;
   destination: string;
   petType: "dog" | "cat";
-  requirements: Requirement[];
+  requirements: RequirementPhaseDisplay[];
   isLoading?: boolean;
   onBack?: () => void;
 }
@@ -94,57 +93,63 @@ export default function RequirementsDisplay({
         </Card>
 
         <div className="space-y-4">
-          <Accordion type="multiple" className="space-y-4">
-            {requirements.map((requirement) => (
-              <AccordionItem
-                key={requirement.id}
-                value={requirement.id}
-                className="border rounded-lg px-6 bg-card"
-              >
-                <AccordionTrigger
-                  className="hover:no-underline py-6"
-                  data-testid={`accordion-${requirement.id}`}
+          <Accordion type="multiple" defaultValue={["entry"]} className="space-y-4">
+            {requirements.map((phaseReq) => {
+              const phaseLabel = phaseReq.phase === "entry" 
+                ? `Entry Requirements (${phaseReq.country})`
+                : `Exit Requirements (${phaseReq.country})`;
+              
+              return (
+                <AccordionItem
+                  key={phaseReq.phase}
+                  value={phaseReq.phase}
+                  className="border rounded-lg px-6 bg-card"
                 >
-                  <div className="flex items-center gap-3">
-                    <requirement.icon className="h-6 w-6 text-primary" />
-                    <span className="text-lg font-semibold">
-                      {requirement.category}
-                    </span>
-                    <Badge variant="outline" className="ml-2">
-                      {requirement.items.length}
-                    </Badge>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="pb-6">
-                  <div className="space-y-4 pt-2">
-                    {requirement.items.map((item, index) => (
-                      <div
-                        key={index}
-                        className={`p-4 rounded-lg border-l-4 ${
-                          item.critical
-                            ? "bg-destructive/10 border-destructive"
-                            : "bg-muted/50 border-primary"
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          {item.critical ? (
-                            <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
-                          ) : (
-                            <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                          )}
-                          <div className="flex-1">
-                            <h4 className="font-semibold mb-1">{item.title}</h4>
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                              {item.description}
-                            </p>
+                  <AccordionTrigger
+                    className="hover:no-underline py-6"
+                    data-testid={`accordion-${phaseReq.phase}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <phaseReq.icon className="h-6 w-6 text-primary" />
+                      <span className="text-lg font-semibold">
+                        {phaseLabel}
+                      </span>
+                      <Badge variant="outline" className="ml-2">
+                        {phaseReq.items.length}
+                      </Badge>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-6">
+                    <div className="space-y-4 pt-2">
+                      {phaseReq.items.map((item, index) => (
+                        <div
+                          key={index}
+                          className={`p-4 rounded-lg border-l-4 ${
+                            item.critical
+                              ? "bg-destructive/10 border-destructive"
+                              : "bg-muted/50 border-primary"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            {item.critical ? (
+                              <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                            ) : (
+                              <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                            )}
+                            <div className="flex-1">
+                              <h4 className="font-semibold mb-1">{item.title}</h4>
+                              <p className="text-sm text-muted-foreground leading-relaxed">
+                                {item.description}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
           </Accordion>
         </div>
 

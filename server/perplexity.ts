@@ -1,4 +1,4 @@
-import type { PetTravelRequest, PetTravelResponse, RequirementCategory } from "@shared/schema";
+import type { PetTravelRequest, PetTravelResponse, RequirementPhase } from "@shared/schema";
 
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
 const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
@@ -64,42 +64,37 @@ export async function researchPetTravelRequirements(
 
   const userPrompt = `Research the official government requirements for traveling with a ${petType} from ${origin} to ${destination}.
 
-Provide clear, organized information in these categories:
+Organize your response into TWO main sections:
 
-1. HEALTH & VACCINATION REQUIREMENTS
-   - Required vaccinations (rabies, etc.) with specific timing
-   - Health certificates and veterinary examinations required
-   - Blood tests or antibody titers if needed
-   - Required parasite treatments
+## ENTRY REQUIREMENTS (${destination})
+Requirements imposed by ${destination} for entering the country with a pet:
+- Health & Vaccination Requirements (rabies, health certificates, blood tests, parasite treatments)
+- Documentation & Permits (import permits, microchip, official forms)
+- Quarantine & Entry Regulations (quarantine rules, approved entry points, customs procedures)
 
-2. DOCUMENTATION & PERMITS
-   - Import permits and how to apply
-   - Microchip requirements (ISO standards)
-   - Official forms and certificates needed
-   - Proof of ownership requirements
-
-3. QUARANTINE & ENTRY REGULATIONS
-   - Quarantine requirements and duration
-   - Conditions for quarantine exemption
-   - Approved entry points and customs procedures
-   - Any additional entry restrictions
+## EXIT REQUIREMENTS (${origin})
+Requirements imposed by ${origin} for leaving the country with a pet:
+- Export permits or certificates needed
+- Health documentation required by ${origin} for exit
+- Any restrictions on taking pets out of ${origin}
+- Timing requirements for exit documentation
 
 For each requirement, clearly state:
 - What is required
 - When it must be done (timing/validity)
-- Mark as CRITICAL if failure means denied entry
-- Any specific details about ${destination}'s regulations
+- Mark as CRITICAL if failure means denied entry/exit
+- Which country imposes this requirement
 
-Focus ONLY on official government sources: customs departments, agriculture ministries, veterinary authorities, and embassy guidelines. Do not include airline policies or carrier requirements.
+IMPORTANT: Format your response with clear section headers "ENTRY REQUIREMENTS" and "EXIT REQUIREMENTS" followed by bullet points. If a country has no exit requirements, state "No specific exit requirements" in that section.
 
-Format your response with clear bullet points for easy parsing.`;
+Focus ONLY on official government sources. Do not include airline policies.`;
 
   const result = await callPerplexity([
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt },
   ]);
 
-  const requirements = parseRequirementsFromResponse(result.content);
+  const requirements = parseRequirementsFromResponse(result.content, origin, destination);
 
   return {
     origin,
@@ -110,84 +105,53 @@ Format your response with clear bullet points for easy parsing.`;
   };
 }
 
-function parseRequirementsFromResponse(content: string): RequirementCategory[] {
-  const categories: RequirementCategory[] = [
-    {
-      id: "health",
-      category: "Health & Vaccination Requirements",
-      items: [],
-    },
-    {
-      id: "documentation",
-      category: "Documentation & Permits",
-      items: [],
-    },
-    {
-      id: "quarantine",
-      category: "Quarantine & Entry Regulations",
-      items: [],
-    },
-  ];
-
+function parseRequirementsFromResponse(content: string, origin: string, destination: string): RequirementPhase[] {
   const cleanedContent = cleanContent(content);
-
-  const sections = cleanedContent.split(/\d+\.\s+(?:HEALTH|DOCUMENTATION|QUARANTINE)/i);
   
-  if (sections.length > 1) {
-    const healthSection = extractSection(cleanedContent, /HEALTH\s+&\s+VACCINATION/i, /DOCUMENTATION/i);
-    const docSection = extractSection(cleanedContent, /DOCUMENTATION\s+&\s+PERMITS/i, /QUARANTINE/i);
-    const quarantineSection = extractSection(cleanedContent, /QUARANTINE\s+&\s+ENTRY/i, /$|$/);
-
-    categories[0].items = parseItems(healthSection);
-    categories[1].items = parseItems(docSection);
-    categories[2].items = parseItems(quarantineSection);
+  const entrySection = extractSection(cleanedContent, /##\s*ENTRY\s+REQUIREMENTS/i, /##\s*EXIT\s+REQUIREMENTS/i);
+  const exitSection = extractSection(cleanedContent, /##\s*EXIT\s+REQUIREMENTS/i, /$/);
+  
+  const phases: RequirementPhase[] = [];
+  
+  const entryItems = parsePhaseItems(entrySection, "entry");
+  if (entryItems.length > 0) {
+    phases.push({
+      phase: "entry",
+      country: destination,
+      items: entryItems,
+    });
   } else {
-    const lines = cleanedContent.split('\n');
-    let currentCategory = 0;
-    let currentItem = { title: '', description: '', critical: false };
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-
-      if (trimmed.match(/vaccination|rabies|health certificate|blood test|parasite/i) && currentCategory === 0) {
-        if (currentItem.title) {
-          categories[0].items.push({ ...currentItem });
-        }
-        currentItem = extractItemFromLine(trimmed);
-      } else if (trimmed.match(/permit|microchip|documentation|ownership|form|certificate/i) && currentCategory <= 1) {
-        if (currentItem.title && currentCategory === 0) {
-          categories[0].items.push({ ...currentItem });
-        }
-        currentCategory = 1;
-        currentItem = extractItemFromLine(trimmed);
-      } else if (trimmed.match(/quarantine|entry|customs|border|port/i) && currentCategory <= 2) {
-        if (currentItem.title && currentCategory === 1) {
-          categories[1].items.push({ ...currentItem });
-        }
-        currentCategory = 2;
-        currentItem = extractItemFromLine(trimmed);
-      } else if (currentItem.title) {
-        currentItem.description += ' ' + trimmed;
-      }
-    }
-
-    if (currentItem.title) {
-      categories[currentCategory].items.push(currentItem);
-    }
-  }
-
-  categories.forEach(cat => {
-    if (cat.items.length === 0) {
-      cat.items.push({
+    phases.push({
+      phase: "entry",
+      country: destination,
+      items: [{
         title: "Information Pending",
-        description: "Specific requirements for this category are being researched. Please consult official sources or contact the embassy for detailed information.",
+        description: "Entry requirements for this destination are being researched. Please consult official sources or contact the embassy.",
         critical: false,
-      });
-    }
-  });
-
-  return categories;
+      }],
+    });
+  }
+  
+  const exitItems = parsePhaseItems(exitSection, "exit");
+  if (exitItems.length > 0) {
+    phases.push({
+      phase: "exit",
+      country: origin,
+      items: exitItems,
+    });
+  } else {
+    phases.push({
+      phase: "exit",
+      country: origin,
+      items: [{
+        title: "No Exit Requirements",
+        description: "No specific exit requirements found for this origin country. Standard travel documentation may apply.",
+        critical: false,
+      }],
+    });
+  }
+  
+  return phases;
 }
 
 function cleanContent(content: string): string {
@@ -212,8 +176,8 @@ function extractSection(content: string, startPattern: RegExp, endPattern: RegEx
   return remaining.slice(0, endIndex);
 }
 
-function parseItems(section: string): Array<{ title: string; description: string; critical?: boolean }> {
-  const items: Array<{ title: string; description: string; critical?: boolean }> = [];
+function parsePhaseItems(section: string, phase: "entry" | "exit"): Array<{ title: string; description: string; critical?: boolean; subcategory?: "health" | "documentation" | "quarantine" | "general" }> {
+  const items: Array<{ title: string; description: string; critical?: boolean; subcategory?: "health" | "documentation" | "quarantine" | "general" }> = [];
   
   const bulletPoints = section.split(/[-•*]\s+/).filter(s => s.trim());
   
@@ -223,6 +187,15 @@ function parseItems(section: string): Array<{ title: string; description: string
     
     const fullText = lines.join(' ').trim();
     const isCritical = /critical|mandatory|required|must/i.test(fullText);
+    
+    let subcategory: "health" | "documentation" | "quarantine" | "general" = "general";
+    if (fullText.match(/vaccination|rabies|health certificate|blood test|parasite|veterinary/i)) {
+      subcategory = "health";
+    } else if (fullText.match(/permit|microchip|documentation|certificate|form|passport/i)) {
+      subcategory = "documentation";
+    } else if (fullText.match(/quarantine|entry point|customs|border|inspection/i)) {
+      subcategory = "quarantine";
+    }
     
     const colonIndex = fullText.indexOf(':');
     if (colonIndex > 0 && colonIndex < 100) {
@@ -236,7 +209,8 @@ function parseItems(section: string): Array<{ title: string; description: string
         items.push({ 
           title, 
           description, 
-          critical: isCritical 
+          critical: isCritical,
+          subcategory,
         });
       }
     } else if (fullText.length > 0) {
@@ -252,6 +226,7 @@ function parseItems(section: string): Array<{ title: string; description: string
             title,
             description,
             critical: isCritical,
+            subcategory,
           });
         }
       } else if (sentences.length === 1 && sentences[0].length > 10) {
@@ -259,6 +234,7 @@ function parseItems(section: string): Array<{ title: string; description: string
           title: sentences[0],
           description: "See official sources for detailed information.",
           critical: isCritical,
+          subcategory,
         });
       }
     }
@@ -268,7 +244,8 @@ function parseItems(section: string): Array<{ title: string; description: string
     item.title && 
     item.description && 
     item.title.toLowerCase() !== item.description.toLowerCase() &&
-    !item.title.match(/^###?\s*\d+\.?$/)
+    !item.title.match(/^###?\s*\d+\.?$/) &&
+    !item.title.match(/no\s+(specific|exit)\s+requirements/i)
   );
 }
 

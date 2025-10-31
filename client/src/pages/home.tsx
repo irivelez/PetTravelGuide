@@ -10,15 +10,13 @@ import Footer from "@/components/Footer";
 import { useToast } from "@/hooks/use-toast";
 import type { PetTravelResponse } from "@shared/schema";
 import {
-  Syringe,
-  FileText,
-  Home as HomeIcon,
+  ArrowRight,
+  ArrowLeft,
 } from "lucide-react";
 
-const categoryIcons = {
-  health: Syringe,
-  documentation: FileText,
-  quarantine: HomeIcon,
+const phaseIcons = {
+  entry: ArrowRight,
+  exit: ArrowLeft,
 };
 
 export default function Home() {
@@ -64,7 +62,7 @@ export default function Home() {
 
   const requirementsWithIcons = requirementsData?.requirements.map(req => ({
     ...req,
-    icon: categoryIcons[req.id as keyof typeof categoryIcons] || FileText,
+    icon: phaseIcons[req.phase] || ArrowRight,
   })) || [];
 
   return (
