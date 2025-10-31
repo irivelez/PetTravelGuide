@@ -13,14 +13,12 @@ import {
   Syringe,
   FileText,
   Home as HomeIcon,
-  Plane,
 } from "lucide-react";
 
 const categoryIcons = {
   health: Syringe,
   documentation: FileText,
   quarantine: HomeIcon,
-  airline: Plane,
 };
 
 export default function Home() {

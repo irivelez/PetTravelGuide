@@ -60,42 +60,39 @@ export async function researchPetTravelRequirements(
 ): Promise<PetTravelResponse> {
   const { origin, destination, petType } = request;
 
-  const systemPrompt = `You are a pet travel requirements expert. You must provide accurate, detailed information about traveling internationally with pets based on official government regulations, airline policies, and veterinary requirements. Always cite official sources.`;
+  const systemPrompt = `You are a pet travel requirements expert specializing in government regulations and official documentation. Provide accurate information based solely on official government sources, customs departments, and veterinary regulatory bodies. Do not include airline-specific policies.`;
 
-  const userPrompt = `I need comprehensive requirements for traveling with a ${petType} from ${origin} to ${destination}.
+  const userPrompt = `Research the official government requirements for traveling with a ${petType} from ${origin} to ${destination}.
 
-Please research and provide detailed information in the following categories:
+Provide clear, organized information in these categories:
 
 1. HEALTH & VACCINATION REQUIREMENTS
-   - Required vaccinations (rabies, etc.) with timing requirements
-   - Health certificates and veterinary examinations
-   - Blood tests or titers if required
-   - Parasite treatments
+   - Required vaccinations (rabies, etc.) with specific timing
+   - Health certificates and veterinary examinations required
+   - Blood tests or antibody titers if needed
+   - Required parasite treatments
 
 2. DOCUMENTATION & PERMITS
-   - Import permits and applications
-   - Microchip requirements and standards
-   - Proof of ownership documentation
-   - Any country-specific forms
+   - Import permits and how to apply
+   - Microchip requirements (ISO standards)
+   - Official forms and certificates needed
+   - Proof of ownership requirements
 
-3. QUARANTINE REGULATIONS
-   - Whether quarantine is required and duration
+3. QUARANTINE & ENTRY REGULATIONS
+   - Quarantine requirements and duration
    - Conditions for quarantine exemption
-   - Approved entry points
+   - Approved entry points and customs procedures
+   - Any additional entry restrictions
 
-4. AIRLINE-SPECIFIC RULES
-   - Carrier requirements and dimensions
-   - Advance booking requirements
-   - Temperature restrictions
-   - Cabin vs cargo policies for this route
+For each requirement, clearly state:
+- What is required
+- When it must be done (timing/validity)
+- Mark as CRITICAL if failure means denied entry
+- Any specific details about ${destination}'s regulations
 
-For each requirement, specify:
-- The exact requirement
-- Timing (how far in advance, validity period)
-- Whether it's CRITICAL (failure results in denied entry) or standard
-- Any specific details about the destination country's regulations
+Focus ONLY on official government sources: customs departments, agriculture ministries, veterinary authorities, and embassy guidelines. Do not include airline policies or carrier requirements.
 
-Focus on official government sources like USDA, DEFRA, EU regulations, and the destination country's agriculture/customs department.`;
+Format your response with clear bullet points for easy parsing.`;
 
   const result = await callPerplexity([
     { role: "system", content: systemPrompt },
@@ -127,30 +124,25 @@ function parseRequirementsFromResponse(content: string): RequirementCategory[] {
     },
     {
       id: "quarantine",
-      category: "Quarantine Regulations",
-      items: [],
-    },
-    {
-      id: "airline",
-      category: "Airline-Specific Rules",
+      category: "Quarantine & Entry Regulations",
       items: [],
     },
   ];
 
-  const sections = content.split(/\d+\.\s+(?:HEALTH|DOCUMENTATION|QUARANTINE|AIRLINE)/i);
+  const cleanedContent = cleanContent(content);
+
+  const sections = cleanedContent.split(/\d+\.\s+(?:HEALTH|DOCUMENTATION|QUARANTINE)/i);
   
   if (sections.length > 1) {
-    const healthSection = extractSection(content, /HEALTH\s+&\s+VACCINATION/i, /DOCUMENTATION/i);
-    const docSection = extractSection(content, /DOCUMENTATION\s+&\s+PERMITS/i, /QUARANTINE/i);
-    const quarantineSection = extractSection(content, /QUARANTINE/i, /AIRLINE/i);
-    const airlineSection = extractSection(content, /AIRLINE/i, /$|$/);
+    const healthSection = extractSection(cleanedContent, /HEALTH\s+&\s+VACCINATION/i, /DOCUMENTATION/i);
+    const docSection = extractSection(cleanedContent, /DOCUMENTATION\s+&\s+PERMITS/i, /QUARANTINE/i);
+    const quarantineSection = extractSection(cleanedContent, /QUARANTINE\s+&\s+ENTRY/i, /$|$/);
 
     categories[0].items = parseItems(healthSection);
     categories[1].items = parseItems(docSection);
     categories[2].items = parseItems(quarantineSection);
-    categories[3].items = parseItems(airlineSection);
   } else {
-    const lines = content.split('\n');
+    const lines = cleanedContent.split('\n');
     let currentCategory = 0;
     let currentItem = { title: '', description: '', critical: false };
 
@@ -163,23 +155,17 @@ function parseRequirementsFromResponse(content: string): RequirementCategory[] {
           categories[0].items.push({ ...currentItem });
         }
         currentItem = extractItemFromLine(trimmed);
-      } else if (trimmed.match(/permit|microchip|documentation|ownership|form/i) && currentCategory <= 1) {
+      } else if (trimmed.match(/permit|microchip|documentation|ownership|form|certificate/i) && currentCategory <= 1) {
         if (currentItem.title && currentCategory === 0) {
           categories[0].items.push({ ...currentItem });
         }
         currentCategory = 1;
         currentItem = extractItemFromLine(trimmed);
-      } else if (trimmed.match(/quarantine/i) && currentCategory <= 2) {
+      } else if (trimmed.match(/quarantine|entry|customs|border|port/i) && currentCategory <= 2) {
         if (currentItem.title && currentCategory === 1) {
           categories[1].items.push({ ...currentItem });
         }
         currentCategory = 2;
-        currentItem = extractItemFromLine(trimmed);
-      } else if (trimmed.match(/airline|carrier|booking|cabin|cargo/i) && currentCategory <= 3) {
-        if (currentItem.title && currentCategory === 2) {
-          categories[2].items.push({ ...currentItem });
-        }
-        currentCategory = 3;
         currentItem = extractItemFromLine(trimmed);
       } else if (currentItem.title) {
         currentItem.description += ' ' + trimmed;
@@ -204,6 +190,15 @@ function parseRequirementsFromResponse(content: string): RequirementCategory[] {
   return categories;
 }
 
+function cleanContent(content: string): string {
+  return content
+    .replace(/\[\d+\]/g, '')
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function extractSection(content: string, startPattern: RegExp, endPattern: RegExp): string {
   const startMatch = content.match(startPattern);
   if (!startMatch) return '';
@@ -226,28 +221,66 @@ function parseItems(section: string): Array<{ title: string; description: string
     const lines = point.trim().split('\n').filter(l => l.trim());
     if (lines.length === 0) continue;
     
-    const firstLine = lines[0].trim();
-    const isCritical = /critical|mandatory|required|must/i.test(point);
+    const fullText = lines.join(' ').trim();
+    const isCritical = /critical|mandatory|required|must/i.test(fullText);
     
-    const colonIndex = firstLine.indexOf(':');
-    if (colonIndex > 0) {
-      const title = firstLine.slice(0, colonIndex).trim();
-      const descParts = [firstLine.slice(colonIndex + 1).trim(), ...lines.slice(1)];
-      const description = descParts.join(' ').trim();
+    const colonIndex = fullText.indexOf(':');
+    if (colonIndex > 0 && colonIndex < 100) {
+      const rawTitle = fullText.slice(0, colonIndex).trim();
+      const rawDescription = fullText.slice(colonIndex + 1).trim();
       
-      if (title && description) {
-        items.push({ title, description, critical: isCritical });
+      const title = cleanText(rawTitle);
+      const description = cleanText(rawDescription);
+      
+      if (title && description && title.toLowerCase() !== description.toLowerCase() && description.length > 3) {
+        items.push({ 
+          title, 
+          description, 
+          critical: isCritical 
+        });
       }
-    } else {
-      items.push({
-        title: firstLine,
-        description: lines.slice(1).join(' ').trim() || firstLine,
-        critical: isCritical,
-      });
+    } else if (fullText.length > 0) {
+      const cleanedText = cleanText(fullText);
+      const sentences = cleanedText.split(/\.\s+/).filter(s => s.trim());
+      
+      if (sentences.length >= 2) {
+        const title = sentences[0].trim();
+        const description = sentences.slice(1).join('. ').trim() + (sentences.slice(1).join('').includes('.') ? '' : '.');
+        
+        if (title && description && title.toLowerCase() !== description.toLowerCase()) {
+          items.push({
+            title,
+            description,
+            critical: isCritical,
+          });
+        }
+      } else if (sentences.length === 1 && sentences[0].length > 10) {
+        items.push({
+          title: sentences[0],
+          description: "See official sources for detailed information.",
+          critical: isCritical,
+        });
+      }
     }
   }
   
-  return items;
+  return items.filter(item => 
+    item.title && 
+    item.description && 
+    item.title.toLowerCase() !== item.description.toLowerCase() &&
+    !item.title.match(/^###?\s*\d+\.?$/)
+  );
+}
+
+function cleanText(text: string): string {
+  return text
+    .replace(/\[\d+\]/g, '')
+    .replace(/#{1,6}\s*/g, '')
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '')
+    .replace(/--+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function extractItemFromLine(line: string): { title: string; description: string; critical: boolean } {
