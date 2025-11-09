@@ -3,7 +3,7 @@
 AI-powered research tool for international pet travel requirements
 
 ⏱️ **Build time:** ~3 hours  
-🛠️ **Built with:** React, TypeScript, Node.js, Perplexity AI, Replit  
+🛠️ **Built with:** Replit, Perplexity AI  
 🎯 **Purpose:** Help pet owners research travel requirements for dogs and cats across countries
 
 ## What It Does
@@ -96,42 +96,6 @@ The application combines a React frontend with an Express backend that interface
 5. **Caching**: Results are cached for 24 hours to improve performance
 6. **Display**: Frontend presents organized, easy-to-understand requirements
 
-### API Structure
-
-**Endpoint:** `POST /api/pet-travel/requirements`
-
-**Request:**
-```json
-{
-  "origin": "United States",
-  "destination": "France",
-  "petType": "dog"
-}
-```
-
-**Response:**
-```json
-{
-  "origin": "United States",
-  "destination": "France",
-  "petType": "dog",
-  "requirements": [
-    {
-      "phase": "entry",
-      "country": "France",
-      "items": [
-        {
-          "title": "Rabies Vaccination",
-          "description": "Must be administered at least 21 days before travel",
-          "critical": true,
-          "subcategory": "health"
-        }
-      ]
-    }
-  ]
-}
-```
-
 ## Output
 
 The application provides:
@@ -163,22 +127,6 @@ The application provides:
 - English language interface only
 - No database persistence (in-memory cache only)
 
-## Project Structure
-
-```
-├── client/               # React frontend
-│   ├── src/
-│   │   ├── components/    # UI components
-│   │   ├── pages/         # Page components
-│   │   └── lib/           # Utilities
-├── server/              # Express backend
-│   ├── index.ts        # Server entry
-│   ├── routes.ts       # API routes
-│   ├── perplexity.ts   # AI integration
-│   └── storage.ts      # Caching layer
-├── shared/              # Shared types
-└── attached_assets/    # Images and assets
-```
 
 ---
 
