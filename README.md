@@ -130,4 +130,4 @@ The application provides:
 
 ---
 
-*Part of [thexperiment.dev](https://thexperiment.dev) - Projects by non-tech people for non-tech people*
+⚡️ Built in ~3 hours • Part of thexperiment.dev
