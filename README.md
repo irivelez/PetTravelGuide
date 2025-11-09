@@ -1,84 +1,106 @@
-# PetTravel - International Pet Travel Requirements Research
+# 🐾 Pet Travel Guide
 
-A web application that helps pet owners research international travel requirements for dogs and cats using AI-powered research through the Perplexity API.
+AI-powered research tool for international pet travel requirements
 
-## Features
+⏱️ **Build time:** ~3 hours  
+🛠️ **Built with:** React, TypeScript, Node.js, Perplexity AI, Replit  
+🎯 **Purpose:** Help pet owners research travel requirements for dogs and cats across countries
 
-- **AI-Powered Research**: Uses Perplexity AI to search official government sources for accurate, up-to-date pet travel requirements
-- **Comprehensive Requirements**: Organizes requirements into entry and exit phases
-  - **Entry Requirements**: What the destination country requires
-  - **Exit Requirements**: What the origin country requires for departure
-- **Smart Categorization**: Automatically categorizes requirements by health, documentation, quarantine, and general
-- **Critical Requirement Flagging**: Highlights mandatory requirements that cannot be skipped
-- **Intelligent Caching**: 24-hour in-memory cache to reduce API calls and improve performance
-- **Responsive Design**: Mobile-first UI with a clean, trustworthy design
+## What It Does
 
-## Technology Stack
+This web application helps pet owners navigate the complex requirements for traveling internationally with pets. It uses AI-powered research through the Perplexity API to search official government sources and present organized, actionable requirements.
 
-### Frontend
-- React 18 with TypeScript
-- Wouter for client-side routing
-- TanStack Query (React Query) for server state management
-- Tailwind CSS with shadcn/ui components
-- Vite for build tooling
+Key capabilities:
 
-### Backend
-- Node.js with Express.js
-- Perplexity AI API integration
-- Zod for runtime validation
+- 🤖 AI-powered research using Perplexity to find official government sources
+- 📝 Organizes requirements into entry (destination) and exit (origin) phases
+- 🏷️ Smart categorization by health, documentation, quarantine, and general requirements
+- ⚠️ Flags critical mandatory requirements
+- ⚡ 24-hour intelligent caching to reduce API calls
+- 📱 Mobile-first responsive design
+
+## Tech Stack
+
+**Frontend:**
+- **React 18** with TypeScript
+- **Wouter** - Client-side routing
+- **TanStack Query** - Server state management
+- **Tailwind CSS** with shadcn/ui components
+- **Vite** - Build tooling
+
+**Backend:**
+- **Node.js** with Express
+- **Perplexity AI API** - AI-powered research
+- **Zod** - Runtime validation
 - In-memory caching system
 
-## Prerequisites
+## Quick Start
+
+### Prerequisites
 
 - Node.js 18+
-- npm or yarn
 - Perplexity API key ([Get one here](https://www.perplexity.ai/))
+- Replit account (for easy deployment) or local development environment
 
-## Installation
+### Setup
+
+#### Option 1: Deploy on Replit (Easiest)
+
+1. Fork this repository on Replit
+2. Add your Perplexity API key in Secrets:
+   - Key: `PERPLEXITY_API_KEY`
+   - Value: Your API key
+3. Click "Run"
+4. Your app will be live at your Replit URL
+
+#### Option 2: Local Development
 
 1. Clone the repository:
+
 ```bash
-git clone https://github.com/YOUR-USERNAME/PetTravelGuide.git
+git clone https://github.com/irivelez/PetTravelGuide.git
 cd PetTravelGuide
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
-3. Create a `.env` file in the root directory:
-```bash
+3. Create a `.env` file:
+
+```
 PERPLEXITY_API_KEY=your_api_key_here
 NODE_ENV=development
 ```
 
-## Development
+4. Run the development server:
 
-Run the development server:
 ```bash
 npm run dev
 ```
 
-The application will be available at `http://localhost:5000`
+The app will be available at `http://localhost:5000`
 
-## Building for Production
+## How It Works
 
-1. Build the application:
-```bash
-npm run build
-```
+### The System
 
-2. Start the production server:
-```bash
-npm start
-```
+The application combines a React frontend with an Express backend that interfaces with Perplexity AI:
 
-## API Endpoint
+1. **User Input**: Select origin country, destination country, and pet type (dog/cat)
+2. **AI Research**: Backend queries Perplexity AI with structured prompts to search official sources
+3. **Data Processing**: Response is parsed and organized into entry/exit requirements
+4. **Smart Categorization**: Requirements are automatically categorized and critical items are flagged
+5. **Caching**: Results are cached for 24 hours to improve performance
+6. **Display**: Frontend presents organized, easy-to-understand requirements
 
-**POST `/api/pet-travel/requirements`**
+### API Structure
 
-Request body:
+**Endpoint:** `POST /api/pet-travel/requirements`
+
+**Request:**
 ```json
 {
   "origin": "United States",
@@ -87,7 +109,7 @@ Request body:
 }
 ```
 
-Response:
+**Response:**
 ```json
 {
   "origin": "United States",
@@ -100,62 +122,64 @@ Response:
       "items": [
         {
           "title": "Rabies Vaccination",
-          "description": "Must be administered at least 21 days before travel...",
+          "description": "Must be administered at least 21 days before travel",
           "critical": true,
           "subcategory": "health"
         }
       ]
-    },
-    {
-      "phase": "exit",
-      "country": "United States",
-      "items": [...]
     }
-  ],
-  "lastUpdated": "2024-11-09T..."
+  ]
 }
 ```
+
+## Output
+
+The application provides:
+
+- **Entry Requirements**: What the destination country requires
+- **Exit Requirements**: What the origin country requires for departure
+- **Categorized Information**: Health, documentation, quarantine, and general requirements
+- **Critical Alerts**: Mandatory requirements highlighted
+- **Source References**: Links to official government sources when available
+
+## Features
+
+- AI-powered research from official government sources
+- Dual-phase requirement organization (entry/exit)
+- Smart categorization system
+- Critical requirement flagging
+- 24-hour intelligent caching
+- Mobile-responsive design
+- Clean, trustworthy UI inspired by travel platforms
+- TypeScript for type safety
+- Real-time loading states and error handling
+
+## Limitations
+
+- Requires active Perplexity API key (paid service)
+- Research quality depends on availability of official government sources
+- Cached results may not reflect very recent regulation changes
+- Currently supports dogs and cats only
+- English language interface only
+- No database persistence (in-memory cache only)
 
 ## Project Structure
 
 ```
-├── client/src/          # React frontend
-│   ├── components/      # UI components
-│   ├── pages/          # Page components
-│   └── lib/            # Utilities and configs
-├── server/             # Express backend
-│   ├── index.ts        # Server entry point
+├── client/               # React frontend
+│   ├── src/
+│   │   ├── components/    # UI components
+│   │   ├── pages/         # Page components
+│   │   └── lib/           # Utilities
+├── server/              # Express backend
+│   ├── index.ts        # Server entry
 │   ├── routes.ts       # API routes
 │   ├── perplexity.ts   # AI integration
 │   └── storage.ts      # Caching layer
-├── shared/             # Shared TypeScript types
-│   └── schema.ts       # Zod schemas
+├── shared/              # Shared types
 └── attached_assets/    # Images and assets
 ```
 
-## Environment Variables
+---
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `PERPLEXITY_API_KEY` | API key for Perplexity AI | Yes |
-| `NODE_ENV` | Environment (development/production) | Yes |
-| `PORT` | Server port (default: 5000) | No |
-| `DATABASE_URL` | PostgreSQL connection string (for future use) | No |
-
-## Design Philosophy
-
-The application follows a hybrid design approach:
-- Inspired by travel platforms (Airbnb, Booking.com) for trust and ease-of-use
-- Information-dense patterns from government websites for clarity and credibility
-- Mobile-first responsive design
-- Progressive disclosure from simple selection to detailed requirements
-
-## License
-
-MIT
-
-## Acknowledgments
-
-- Built with [Replit](https://replit.com/)
-- AI research powered by [Perplexity AI](https://www.perplexity.ai/)
-- UI components from [shadcn/ui](https://ui.shadcn.com/)
+*Part of [thexperiment.dev](https://thexperiment.dev) - Projects by non-tech people for non-tech people*
